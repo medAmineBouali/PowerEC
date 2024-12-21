@@ -49,7 +49,7 @@ export const getLastMonthMetricsByDay = async (req, res) => {
             ],
             where: {
                 timestamp: {
-                    [Sequelize.Op.gte]: lastMonth
+                    [Sequelize.Op.between]: [lastMonth,now]
                 }
             },
             group: [Sequelize.fn('DATE', Sequelize.col('timestamp'))],

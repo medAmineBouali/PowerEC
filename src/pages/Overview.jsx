@@ -11,8 +11,6 @@ import {
     PieChart,
     Pie,
     Cell,
-    BarChart,
-    Bar,
 } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
@@ -66,15 +64,16 @@ const Overview = () => {
 
     return (
         <div className="min-h-screen flex flex-col">
-            <section className="bg-zinc-800 py-10">
-                <div className="container mx-auto px-4 text-center">
-                    <h1 className="text-4xl font-bold text-yellow-400 mb-4">Overview Dashboard</h1>
+
+            <section className=" py-10">
+                <div className="container mx-auto   text-left">
+                    <h1 className="text-2xl font-bold  mb-4">Overview</h1>
                 </div>
             </section>
 
             {/* Top-level Metrics Cards */}
-            <section className="bg-zinc-200 text-zinc-100 py-10 text-center">
-                <div className="flex justify-between pl-4 pr-4" >
+            <section className=" text-zinc-100 row py-10 text-center">
+                <div className="flex justify-between pl-4 pr-4 grid grid-cols-5 gap-4">
                     <Card>
                         <CardHeader>
                             <CardTitle>Total Energy (All Time)</CardTitle>
@@ -139,17 +138,18 @@ const Overview = () => {
                     <CardContent>
                         <div className="h-96">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={lastMonthData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="date" />
-                                    <YAxis domain={['auto', 'auto']} />
-                                    <Tooltip />
-                                    <Legend />
+                                <LineChart data={lastMonthData} margin={{top: 20, right: 30, left: 20, bottom: 20}}>
+                                    <CartesianGrid strokeDasharray="3 3"/>
+                                    <XAxis dataKey="date"/>
+                                    <YAxis domain={['auto', 'auto']}/>
+                                    <Tooltip/>
+                                    <Legend/>
                                     {metricToShow === 'energy' && (
-                                        <Line type="monotone" dataKey="totalEnergy" stroke="#8884d8" name="Energy (kWh)" />
+                                        <Line type="monotone" dataKey="totalEnergy" stroke="#8884d8"
+                                              name="Energy (kWh)"/>
                                     )}
                                     {metricToShow === 'cost' && (
-                                        <Line type="monotone" dataKey="cost" stroke="#82ca9d" name="Cost (€)" />
+                                        <Line type="monotone" dataKey="cost" stroke="#82ca9d" name="Cost (€)"/>
                                     )}
                                 </LineChart>
                             </ResponsiveContainer>
@@ -175,11 +175,11 @@ const Overview = () => {
                                         label
                                     >
                                         {plantData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]}/>
                                         ))}
                                     </Pie>
-                                    <Tooltip />
-                                    <Legend />
+                                    <Tooltip/>
+                                    <Legend/>
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>

@@ -1,19 +1,93 @@
+import MachineDataModel from '../model/MachineDataModel.js';
+import sequelize from '../api/db.js';
 import { Sequelize } from 'sequelize';
-import Consumption from '../model/consumptionModel.js';
-import Machine from '../model/machineModel.js';
 
-// In your model setup file or after defining models:
-Consumption.belongsTo(Machine, { foreignKey: 'machine_id', targetKey: 'machine_id' });
-Machine.hasMany(Consumption, { foreignKey: 'machine_id', sourceKey: 'machine_id' });
-console.log("linking tables")
+export const getGlobalMetrics = async (req, res) => {
+    const { plant, category } = req.query;
+    try {
+        const filters = {};
+        if (plant) filters.plant = plant;
+        if (category) filters.category = category;
 
+        const aggregateConsumption = await MachineDataModel.findAll({
+            attributes: ['plant', [sequelize.fn('SUM', sequelize.col('energy_consumption')), 'total_consumption']],
+            where: filters,
+            group: ['plant'],
+        });
+
+        const categoryDistribution = await MachineDataModel.findAll({
+            attributes: ['category', [sequelize.fn('COUNT', sequelize.col('category')), 'count']],
+            where: filters,
+            group: ['category'],
+        });
+
+        const consumptionTrend = await MachineDataModel.findAll({
+            attributes: ['timestamp', [sequelize.fn('SUM', sequelize.col('power')), 'total_power']],
+            where: filters,
+            order: [['timestamp', 'ASC']],
+        });
+
+        res.json({ aggregateConsumption, categoryDistribution, consumptionTrend });
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching global metrics', details: error });
+    }
+};
+
+export const getMachineHealth = async (req, res) => {
+    const { plant, category } = req.query;
+    try {
+        const filters = {};
+        if (plant) filters.plant = plant;
+        if (category) filters.category = category;
+
+        const powerFactorHeatmap = await MachineDataModel.findAll({
+            attributes: ['timestamp', 'machine_id', 'power_factor'],
+            where: filters,
+            order: [['timestamp', 'ASC']],
+        });
+
+        const highLowPowerStats = await MachineDataModel.findAll({
+            attributes: [
+                [sequelize.fn('SUM', sequelize.col('high_power')), 'high_power_count'],
+                [sequelize.fn('SUM', sequelize.col('low_power_factor')), 'low_power_factor_count'],
+            ],
+            where: filters,
+        });
+
+        res.json({ powerFactorHeatmap, highLowPowerStats });
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching machine health', details: error });
+    }
+};
+
+export const getCostInsights = async (req, res) => {
+    const { plant, category, index } = req.query;
+    try {
+        const filters = {};
+        if (plant) filters.plant = plant;
+        if (category) filters.category = category;
+
+        const costIndexData = await MachineDataModel.findAll({
+            attributes: [
+                'timestamp',
+                [sequelize.fn('SUM', sequelize.col(index === 'cost' ? 'cost' : 'energy_consumption')), 'value'],
+            ],
+            where: filters,
+            order: [['timestamp', 'ASC']],
+        });
+
+        res.json({ costIndexData });
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching cost insights', details: error });
+    }
+};
 
 export const getOverviewMetrics = async (req, res) => {
     try {
-        const totalEnergy = await Consumption.sum('energy_consumption');
-        const totalMachines = await Machine.count();
+        const totalEnergy = await MachineDataModel.sum('energy_consumption');
+        const totalMachines = await MachineDataModel.count({ distinct: 'machine_id' });
 
-        const avgPowerFactorRow = await Consumption.findOne({
+        const avgPowerFactorRow = await MachineDataModel.findOne({
             attributes: [
                 [Sequelize.fn('AVG', Sequelize.col('power_factor')), 'avgPowerFactor']
             ],
@@ -42,14 +116,14 @@ export const getLastMonthMetricsByDay = async (req, res) => {
         const lastMonth = new Date();
         lastMonth.setMonth(lastMonth.getMonth() - 1);
 
-        const dailyData = await Consumption.findAll({
+        const dailyData = await MachineDataModel.findAll({
             attributes: [
                 [Sequelize.fn('DATE', Sequelize.col('timestamp')), 'date'],
                 [Sequelize.fn('SUM', Sequelize.col('energy_consumption')), 'totalEnergy']
             ],
             where: {
                 timestamp: {
-                    [Sequelize.Op.between]: [lastMonth,now]
+                    [Sequelize.Op.between]: [lastMonth, now]
                 }
             },
             group: [Sequelize.fn('DATE', Sequelize.col('timestamp'))],
@@ -76,63 +150,34 @@ export const getLastMonthMetricsByDay = async (req, res) => {
 
 export const getPlantConsumptionLastMonth = async (req, res) => {
     try {
-
         const { Op } = Sequelize;
         const lastMonth = new Date();
         lastMonth.setMonth(lastMonth.getMonth() - 1);
 
-        // Get sum of energy by location for the last month
-        const plantConsumption = await Consumption.findAll({
+        const plantConsumption = await MachineDataModel.findAll({
             attributes: [
-                [Sequelize.fn('SUM', Sequelize.col('energy_consumption')), 'totalEnergy']
+                [Sequelize.fn('SUM', Sequelize.col('energy_consumption')), 'totalEnergy'],
+                'plant'
             ],
             where: {
                 timestamp: {
                     [Op.gte]: lastMonth
                 }
             },
-            include: [{
-                model: Machine,
-                attributes: ['location'], // e.g. "Plant_A/climatisation"
-            }],
-            group: ['Machine.location'],
+            group: ['plant'],
             raw: true,
         });
 
-        
-        // Aggregate by plant (the substring before '/')
-        // plantConsumption is an array of objects like:
-        // { totalEnergy: '1234.56', 'Machine.location': 'Plant_A/climatisation' }
+        const formattedData = plantConsumption.map(row => ({
+            plant: row.plant,
+            totalEnergy: parseFloat(row.totalEnergy).toFixed(2),
+        }));
 
-        const plantMap = {};
-
-        for (const row of plantConsumption) {
-            const fullLocation = row['Machine.location'] || '';
-            const plant = fullLocation.split('/')[0]; // Extract just "Plant_A"
-            const energy = parseFloat(row.totalEnergy);
-
-
-            if (!plantMap[plant]) {
-                plantMap[plant] = 0;
-            }
-            if (plant == 'Plant_A') {
-                plantMap[plant] += energy * 1.4;
-            } else {
-                plantMap[plant] += energy;
-            }
-        }
-
-
-        // Convert the aggregated data into an array for easier consumption by frontend
-        const plantData = Object.entries(plantMap).map(([plant, totalEnergy]) => ({
-            plant,
-            totalEnergy: parseFloat(totalEnergy.toFixed(2)) // ensures a number
-          }));
-        res.status(200).json(plantData);
+        res.status(200).json(formattedData);
     } catch (error) {
-        console.error('Error fetching plant consumption last month:', error);
+        console.error('Error fetching plant consumption for last month:', error);
         res.status(500).json({
-            message: 'Error fetching plant consumption last month',
+            message: 'Error fetching plant consumption for last month',
             error: error.message,
         });
     }

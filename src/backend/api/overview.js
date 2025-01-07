@@ -1,11 +1,13 @@
 import express from 'express';
-import { getOverviewMetrics ,getLastMonthMetricsByDay ,getPlantConsumptionLastMonth } from '../controller/overviewController.js';
+import { getGlobalMetrics, getMachineHealth, getCostInsights, getOverviewMetrics, getLastMonthMetricsByDay, getPlantConsumptionLastMonth } from '../controller/overviewController.js';
 
 const router = express.Router();
 
-router.get('/metrics', getOverviewMetrics);
-router.get('/metrics/last-month', getLastMonthMetricsByDay);
-router.get('/metrics/plants-last-month', getPlantConsumptionLastMonth);
-
+router.get('/global-metrics', getGlobalMetrics);
+router.get('/machine-health', getMachineHealth);
+router.get('/cost-insights', getCostInsights);
+router.get('/overview-metrics', getOverviewMetrics);
+router.get('/last-month-metrics', getLastMonthMetricsByDay);
+router.get('/plant-consumption-last-month', getPlantConsumptionLastMonth);
 
 export default router;

@@ -24,27 +24,32 @@ const Overview = () => {
 
     useEffect(() => {
         // Fetch overview metrics
-        fetch('http://localhost:5000/api/overview/metrics')
+        fetch('http://localhost:5000/api/overview/overview-metrics')
             .then((response) => response.json())
             .then((data) => setOverviewMetrics(data))
             .catch((error) => console.error('Error fetching overview metrics:', error));
 
         // Fetch last month's daily metrics
-        fetch('http://localhost:5000/api/overview/metrics/last-month')
+        fetch('http://localhost:5000/api/overview/last-month-metrics')
             .then((response) => response.json())
             .then((data) => setLastMonthData(data))
             .catch((error) => console.error('Error fetching last month daily metrics:', error));
 
         // Fetch plant data
-        fetch('http://localhost:5000/api/overview/metrics/plants-last-month')
+        fetch('http://localhost:5000/api/overview/plant-consumption-last-month')
             .then((response) => response.json())
             .then((data) => {
-                // Ensure totalEnergy is a number
-                const numericData = data.map(item => ({
-                    ...item,
-                    totalEnergy: parseFloat(item.totalEnergy),
-                }));
-                setPlantData(numericData);
+                // Aggregate total energy by plant
+                const aggregatedData = data.reduce((acc, item) => {
+                    const existingPlant = acc.find((entry) => entry.plant === item.plant);
+                    if (existingPlant) {
+                        existingPlant.totalEnergy += parseFloat(item.totalEnergy) || 0;
+                    } else {
+                        acc.push({ plant: item.plant, totalEnergy: parseFloat(item.totalEnergy) || 0 });
+                    }
+                    return acc;
+                }, []);
+                setPlantData(aggregatedData);
             })
             .catch((error) => console.error('Error fetching plant consumption data:', error));
     }, []);
@@ -140,7 +145,11 @@ const Overview = () => {
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={lastMonthData} margin={{top: 20, right: 30, left: 20, bottom: 20}}>
                                     <CartesianGrid strokeDasharray="3 3"/>
-                                    <XAxis dataKey="date"/>
+                                    <XAxis
+                                        dataKey="date"
+                                        domain={['dataMin', 'dataMax']}
+                                    />
+
                                     <YAxis domain={['auto', 'auto']}/>
                                     <Tooltip/>
                                     <Legend/>
@@ -172,7 +181,7 @@ const Overview = () => {
                                         cy="50%"
                                         outerRadius={100}
                                         fill="#8884d8"
-                                        label
+                                        label={(entry) => `${entry.plant}: ${entry.totalEnergy.toFixed(2)} kWh`}
                                     >
                                         {plantData.map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]}/>

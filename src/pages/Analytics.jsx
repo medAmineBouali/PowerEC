@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import {AnalyticsFilterMenubar} from "@/components/filter-bar";
+import FilterMenu from "@/components/filter-bar";
 
 const energyData = [
     { name: 'Jan', CO2Emissions: 200, EnergyCost: 150, Profit: 300 },
@@ -20,7 +20,7 @@ export default function Analytics() {
                     <h1 className="text-2xl font-bold  mb-4">
                         Analytics Dashboard</h1>
                 </div>
-                <AnalyticsFilterMenubar/>
+                <FilterMenu/>
             </section>
             <div className="grid grid-rows-2 grid-cols-6 gap-4">
                 <Card className="row-span-1 col-span-1">
